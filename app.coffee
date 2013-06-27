@@ -1,29 +1,27 @@
 
 ###
-Module dependencies.
+	@see http://rowanmanning.com/posts/node-cluster-and-express/
+	Module dependencies.
 ###
 express = require("express")
-routes = require("./routes")
-user = require("./routes/user")
 http = require("http")
 path = require("path")
 app = express()
+cluster = require "cluster"
 
-# all environments
-app.set "port", process.env.PORT or 3000
-app.set "views", __dirname + "/views"
-app.set "view engine", "jade"
-app.use express.favicon()
-app.use express.logger("dev")
-app.use express.bodyParser()
-app.use express.methodOverride()
-app.use app.router
-app.use express.static(path.join(__dirname, "public"))
+if cluster.isMaster
 
-# development only
-app.use express.errorHandler()  if "development" is app.get("env")
-app.get "/", routes.index
-app.get "/users", user.list
-http.createServer(app).listen app.get("port"), ->
-  console.log "Express server listening on port " + app.get("port")
+	# count the cores / cpus
+	cpus = require("os").cpus().length
 
+	# create a new fork for each of the cores that exist
+	cluster.fork() for cpu in [0..cpus] 
+
+else
+	
+	app = do express
+	app.get "/", (req, res)->
+		res.send "HELLO FROM WORKER #{cluster.worker.id}"
+
+	app.listen 3000	
+	console.log "#{cluster.worker.id} booted up"	
